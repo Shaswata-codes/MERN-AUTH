@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
 import transporter from "../config/nodeMailer.js";
+import { json } from "express";
 
 export const register = async (req, res) => {
     const {name, email, password} = req.body;
@@ -134,3 +135,21 @@ export const verifyEmail = async (req,res) =>{
         return res.json({success : false, message: error.message});
     }
 }
+export const isAuthenticated = async (req, res) => {
+    try {
+        return res.json({
+            success: true, 
+            message: "User is authenticated",
+            userId: req.body.userId
+        });
+    } catch (error) {
+        return res.json({success: false, message: error.message});
+    }
+};
+// export const isAuthenticated = async (req, res) => {
+//     try {
+//         return json({success : true, message: "User is authenticated"});
+//     } catch (error) {
+//         return res.json({success : false, message: error.message});
+//     }
+// }
