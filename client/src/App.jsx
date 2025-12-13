@@ -16,9 +16,13 @@ import NotFoundPage from './pages/NotFoundPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 const App = () => {
   return (
     <div>
+      <ToastContainer />
       <Routes>
         <Route path='/' element={<LandingPage />} />
         <Route path='/login' element={<LoginPage />} />

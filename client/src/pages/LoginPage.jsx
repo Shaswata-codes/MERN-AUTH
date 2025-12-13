@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { AppContext } from '../context/AppContext';
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -7,17 +10,34 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    const { setIsLoggedin, getUserData, backendUrl } = useContext(AppContext);
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/login', {
+                email: formData.email,
+                password: formData.password
+            });
+
+            if (data.success) {
+                setIsLoggedin(true);
+                getUserData();
+                navigate(`/${formData.role}-dashboard`);
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
             setIsLoading(false);
-            navigate(`/${formData.role}-dashboard`);
-        }, 1000);
+        }
     };
 
     return (

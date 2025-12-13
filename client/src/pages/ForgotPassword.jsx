@@ -1,86 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const ForgotPassword = () => {
     const navigate = useNavigate();
+    const { backendUrl } = useContext(AppContext);
     const [email, setEmail] = useState('');
-    const [submitted, setSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/sendResetOtp', { email });
+            if (data.success) {
+                toast.success(data.message);
+                navigate('/reset-password', { state: { email } });
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
             setIsLoading(false);
-            setSubmitted(true);
-        }, 1500);
+        }
     };
-
-    if (submitted) {
-        return (
-            <div className="landing-hero">
-                <div className="bg-orb"></div>
-                <div className="container-custom" style={{
-                    minHeight: '100vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    <div className="glass-effect animate-fadeIn" style={{
-                        maxWidth: '500px',
-                        width: '100%',
-                        padding: '3rem',
-                        textAlign: 'center',
-                        borderRadius: '24px'
-                    }}>
-                        <div style={{
-                            width: '90px',
-                            height: '90px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--accent-400), var(--accent-600))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem',
-                            fontSize: '2.5rem',
-                            boxShadow: '0 0 30px rgba(52, 211, 153, 0.4)'
-                        }}>
-                            ✓
-                        </div>
-                        <h1 style={{
-                            fontSize: '2rem',
-                            fontWeight: 800,
-                            marginBottom: '1rem',
-                            color: 'white'
-                        }}>
-                            Check Your Email
-                        </h1>
-                        <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '2rem', lineHeight: 1.6 }}>
-                            We've sent password reset instructions to <strong>{email}</strong>.
-                            Please check your inbox and follow the link to reset your password.
-                        </p>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button
-                                className="btn-primary"
-                                onClick={() => navigate('/login')}
-                                style={{ flex: 1 }}
-                            >
-                                Back to Login
-                            </button>
-                            <button
-                                className="btn-secondary"
-                                onClick={() => setSubmitted(false)}
-                                style={{ flex: 1 }}
-                            >
-                                Try Again
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="landing-hero">
@@ -121,7 +68,7 @@ const ForgotPassword = () => {
                             Forgot Password?
                         </h1>
                         <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
-                            Enter your email and we'll send you instructions to reset your password.
+                            Enter your email and we'll send you an OTP to reset your password.
                         </p>
                     </div>
 
@@ -151,7 +98,7 @@ const ForgotPassword = () => {
                                     <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
                                     Sending...
                                 </>
-                            ) : 'Send Reset Instructions'}
+                            ) : 'Send Reset OTP'}
                         </button>
                     </form>
 
