@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -26,21 +26,115 @@ const AdminDashboard = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalType, setModalType] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [loading, setLoading] = useState(true);
 
-    // Mock data
-    const systemStats = {
-        totalPatients: 1234,
-        totalDoctors: 56,
-        totalAppointments: 3456,
-        revenue: '$124,500'
+    // Form state
+    const [formName, setFormName] = useState('');
+    const [formEmail, setFormEmail] = useState('');
+    const [formPassword, setFormPassword] = useState('');
+    const [formSpecialization, setFormSpecialization] = useState('');
+
+    // Data from backend
+    const [systemStats, setSystemStats] = useState({
+        totalPatients: 0,
+        totalDoctors: 0,
+        totalAppointments: 0,
+        revenue: '$0'
+    });
+    const [recentActivities, setRecentActivities] = useState([]);
+    const [doctors, setDoctors] = useState([]);
+    const [patients, setPatients] = useState([]);
+
+    // Fetch data on mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                axios.defaults.withCredentials = true;
+
+                // Fetch stats
+                const statsRes = await axios.get(backendUrl + '/api/admin/stats');
+                if (statsRes.data.success) {
+                    setSystemStats(statsRes.data.stats);
+                }
+
+                // Fetch activities
+                const activitiesRes = await axios.get(backendUrl + '/api/admin/activities');
+                if (activitiesRes.data.success) {
+                    setRecentActivities(activitiesRes.data.activities);
+                }
+
+                // Fetch doctors
+                const doctorsRes = await axios.get(backendUrl + '/api/doctors/list');
+                if (doctorsRes.data.success) {
+                    setDoctors(doctorsRes.data.doctors);
+                }
+
+                // Fetch patients
+                const patientsRes = await axios.get(backendUrl + '/api/admin/patients');
+                if (patientsRes.data.success) {
+                    setPatients(patientsRes.data.patients);
+                }
+
+            } catch (error) {
+                console.error("Failed to fetch admin data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [backendUrl]);
+
+    // Handle add user/doctor
+    const handleAddUser = async (e) => {
+        e.preventDefault();
+        try {
+            axios.defaults.withCredentials = true;
+
+            if (modalType === 'doctor') {
+                const { data } = await axios.post(backendUrl + '/api/doctors/add', {
+                    name: formName,
+                    email: formEmail,
+                    password: formPassword,
+                    specialization: formSpecialization
+                });
+
+                if (data.success) {
+                    toast.success('Doctor added successfully!');
+                    setDoctors([...doctors, data.doctor]);
+                    setShowAddModal(false);
+                    resetForm();
+                } else {
+                    toast.error(data.message);
+                }
+            } else {
+                const { data } = await axios.post(backendUrl + '/api/admin/user/add', {
+                    name: formName,
+                    email: formEmail,
+                    password: formPassword,
+                    role: 'patient'
+                });
+
+                if (data.success) {
+                    toast.success('Patient added successfully!');
+                    setPatients([...patients, data.user]);
+                    setShowAddModal(false);
+                    resetForm();
+                } else {
+                    toast.error(data.message);
+                }
+            }
+        } catch (error) {
+            toast.error('Failed to add user');
+        }
     };
 
-    const recentActivities = [
-        { id: 1, type: 'registration', text: 'New patient registered: John Doe', time: '5 mins ago', user: 'JD' },
-        { id: 2, type: 'appointment', text: 'Appointment booked: Jane Smith with Dr. Brown', time: '15 mins ago', user: 'JS' },
-        { id: 3, type: 'doctor', text: 'New doctor verification: Dr. Michael Chen', time: '1 hour ago', user: 'MC' },
-        { id: 4, type: 'system', text: 'System backup completed successfully', time: '2 hours ago', user: 'SYS' }
-    ];
+    const resetForm = () => {
+        setFormName('');
+        setFormEmail('');
+        setFormPassword('');
+        setFormSpecialization('');
+    };
 
     return (
         <div className="dashboard-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#0f172a' }}>
@@ -164,6 +258,13 @@ const AdminDashboard = () => {
                                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.875rem 1.5rem', background: 'var(--coral-600)' }}
                                 >
                                     <span>👨‍⚕️</span> Add Doctor
+                                </button>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => { setModalType('patient'); setShowAddModal(true); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.875rem 1.5rem' }}
+                                >
+                                    <span>👤</span> Add Patient
                                 </button>
                             </div>
                         </div>
@@ -314,22 +415,40 @@ const AdminDashboard = () => {
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>
                                 Add New {modalType === 'doctor' ? 'Doctor' : 'Patient'}
                             </h3>
-                            <form>
+                            <form onSubmit={handleAddUser}>
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Full Name</label>
-                                    <input type="text" className="input-field" placeholder="Enter full name" style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                                    <input type="text" className="input-field" placeholder="Enter full name" value={formName} onChange={(e) => setFormName(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Email Address</label>
-                                    <input type="email" className="input-field" placeholder="email@example.com" style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                                    <input type="email" className="input-field" placeholder="email@example.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required />
                                 </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Password</label>
+                                    <input type="password" className="input-field" placeholder="Enter password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                                </div>
+                                {modalType === 'doctor' && (
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Specialization</label>
+                                        <select className="form-select" value={formSpecialization} onChange={(e) => setFormSpecialization(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} required>
+                                            <option value="">Select Specialization</option>
+                                            <option value="General Medicine">General Medicine</option>
+                                            <option value="Cardiology">Cardiology</option>
+                                            <option value="Dermatology">Dermatology</option>
+                                            <option value="Neurology">Neurology</option>
+                                            <option value="Orthopedics">Orthopedics</option>
+                                            <option value="Pediatrics">Pediatrics</option>
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                                    <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                                    <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => { setShowAddModal(false); resetForm(); }}>
                                         Cancel
                                     </button>
                                     <button type="submit" className="btn-primary" style={{ flex: 1, background: 'var(--coral-600)' }}>
-                                        Add User
+                                        Add {modalType === 'doctor' ? 'Doctor' : 'Patient'}
                                     </button>
                                 </div>
                             </form>

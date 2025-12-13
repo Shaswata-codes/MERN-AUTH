@@ -27,6 +27,7 @@ const PatientDashboard = () => {
     const [selectedDoctor, setSelectedDoctor] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [notification, setNotification] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     // AI Symptom State
     const [symptoms, setSymptoms] = useState('');
@@ -40,55 +41,93 @@ const PatientDashboard = () => {
     // AI Health Tip State
     const [healthTip, setHealthTip] = useState('');
 
-    // Mock Data - Doctors
-    const [doctors] = useState([
-        { id: 1, name: 'Dr. Sarah Johnson', specialization: 'Cardiology', rating: 4.8, experience: '15 years', image: '👩‍⚕️', availability: 'Mon, Wed, Fri', fee: '$150' },
-        { id: 2, name: 'Dr. Michael Chen', specialization: 'Dermatology', rating: 4.9, experience: '12 years', image: '👨‍⚕️', availability: 'Tue, Thu', fee: '$120' },
-        { id: 3, name: 'Dr. Emily Brown', specialization: 'General Medicine', rating: 4.7, experience: '10 years', image: '👩‍⚕️', availability: 'Mon-Fri', fee: '$100' },
-        { id: 4, name: 'Dr. James Wilson', specialization: 'Orthopedics', rating: 4.6, experience: '18 years', image: '👨‍⚕️', availability: 'Wed, Sat', fee: '$180' },
-        { id: 5, name: 'Dr. Linda Martinez', specialization: 'Pediatrics', rating: 4.9, experience: '14 years', image: '👩‍⚕️', availability: 'Mon-Thu', fee: '$130' },
-        { id: 6, name: 'Dr. Robert Taylor', specialization: 'Neurology', rating: 4.9, experience: '20 years', image: '👨‍⚕️', availability: 'Fri', fee: '$250' },
-    ]);
+    // Data from Backend
+    const [doctors, setDoctors] = useState([]);
+    const [appointments, setAppointments] = useState([]);
+    const [records, setRecords] = useState([]);
 
-    // Mock Data - Appointments
-    const [appointments, setAppointments] = useState([
-        { id: 1, doctorId: 1, doctorName: 'Dr. Sarah Johnson', specialization: 'Cardiology', date: '2025-12-15', time: '10:00 AM', status: 'confirmed', type: 'In-Person' },
-        { id: 2, doctorId: 2, doctorName: 'Dr. Michael Chen', specialization: 'Dermatology', date: '2025-12-18', time: '02:30 PM', status: 'pending', type: 'Video' }
-    ]);
-
-    // Mock Data - Medical Records
-    const [records] = useState([
-        { id: 1, title: 'Annual Blood Test Results', date: '2025-11-10', doctor: 'Dr. Emily Brown', type: 'Lab Report', size: '2.4 MB' },
-        { id: 2, title: 'X-Ray Right Shoulder', date: '2025-10-05', doctor: 'Dr. James Wilson', type: 'Radiology', size: '15 MB' },
-        { id: 3, title: 'Vaccination History', date: '2025-01-15', doctor: 'Dr. Linda Martinez', type: 'Certificate', size: '1.1 MB' },
-        { id: 4, title: 'Prescription - Antibiotics', date: '2025-09-20', doctor: 'Dr. Emily Brown', type: 'Prescription', size: '0.5 MB' }
-    ]);
-
-    // Mock Data - Health Stats
-    const healthStats = [
+    // Health Stats (can be updated from user profile)
+    const healthStats = userData?.healthStats ? [
+        { label: 'Heart Rate', value: userData.healthStats.heartRate || '-- bpm', icon: '❤️', color: 'var(--coral-500)', trend: 'Normal' },
+        { label: 'Blood Pressure', value: userData.healthStats.bloodPressure || '--/--', icon: '🩺', color: 'var(--primary-500)', trend: 'Normal' },
+        { label: 'Weight', value: userData.healthStats.weight || '-- kg', icon: '⚖️', color: 'var(--accent-500)', trend: 'Normal' },
+        { label: 'Sleep', value: userData.healthStats.sleep || '-- h', icon: '🌙', color: 'var(--purple-500)', trend: 'Normal' }
+    ] : [
         { label: 'Heart Rate', value: '72 bpm', icon: '❤️', color: 'var(--coral-500)', trend: '+2%' },
         { label: 'Blood Pressure', value: '120/80', icon: '🩺', color: 'var(--primary-500)', trend: 'Normal' },
         { label: 'Weight', value: '70 kg', icon: '⚖️', color: 'var(--accent-500)', trend: '-1kg' },
         { label: 'Sleep', value: '7h 30m', icon: '🌙', color: 'var(--purple-500)', trend: '+30m' }
     ];
 
-    // Fetch Health Tip on Mount
+    // Fetch data on mount
     useEffect(() => {
-        const fetchTip = async () => {
+        const fetchData = async () => {
             try {
-                // Mocking stats sending
-                const stats = { heartRate: '72 bpm', bp: '120/80', weight: '70 kg', sleep: '7h 30m' };
-                const response = await axios.post('http://localhost:4000/api/gemini/health-tips', { stats });
-                if (response.data.success) {
-                    setHealthTip(response.data.data.tip);
+                axios.defaults.withCredentials = true;
+
+                // Fetch doctors
+                const doctorsRes = await axios.get(backendUrl + '/api/doctors/list');
+                if (doctorsRes.data.success) {
+                    setDoctors(doctorsRes.data.doctors.map(d => ({
+                        id: d._id,
+                        _id: d._id,
+                        name: d.name,
+                        specialization: d.specialization || 'General Medicine',
+                        rating: d.rating || 4.5,
+                        experience: d.experience || '5+ years',
+                        image: d.name.includes('a') || d.name.includes('e') ? '👩‍⚕️' : '👨‍⚕️',
+                        availability: d.availability || 'Mon-Fri',
+                        fee: `$${d.fee || 100}`
+                    })));
                 }
+
+                // Fetch appointments
+                const aptsRes = await axios.get(backendUrl + '/api/appointments/patient');
+                if (aptsRes.data.success) {
+                    setAppointments(aptsRes.data.appointments.map(a => ({
+                        id: a._id,
+                        _id: a._id,
+                        doctorId: a.doctorId,
+                        doctorName: a.doctorName,
+                        specialization: a.specialization,
+                        date: new Date(a.date).toISOString().split('T')[0],
+                        time: a.time,
+                        status: a.status,
+                        type: a.type
+                    })));
+                }
+
+                // Fetch medical records
+                const recordsRes = await axios.get(backendUrl + '/api/records/my');
+                if (recordsRes.data.success) {
+                    setRecords(recordsRes.data.records.map(r => ({
+                        id: r._id,
+                        _id: r._id,
+                        title: r.title,
+                        date: new Date(r.createdAt).toISOString().split('T')[0],
+                        doctor: r.doctorName || 'Unknown',
+                        type: r.type,
+                        size: r.fileSize || '1 MB'
+                    })));
+                }
+
+                // Fetch health tip
+                const stats = { heartRate: '72 bpm', bp: '120/80', weight: '70 kg', sleep: '7h 30m' };
+                const tipRes = await axios.post(backendUrl + '/api/gemini/health-tips', { stats });
+                if (tipRes.data.success) {
+                    setHealthTip(tipRes.data.data.tip);
+                }
+
             } catch (error) {
-                console.error("Failed to fetch health tip", error);
+                console.error("Failed to fetch data", error);
                 setHealthTip("Stay hydrated and keep moving!");
+            } finally {
+                setLoading(false);
             }
         };
-        fetchTip();
-    }, []);
+
+        fetchData();
+    }, [backendUrl]);
 
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
@@ -145,35 +184,56 @@ const PatientDashboard = () => {
         }
     };
 
-    const handleBookAppointment = (e) => {
+    const handleBookAppointment = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const doctorId = selectedDoctor || parseInt(formData.get('doctorId'));
+        const doctorId = selectedDoctor || formData.get('doctorId');
         const date = formData.get('date');
+        const time = formData.get('time') || '09:00 AM';
         const type = formData.get('type') || 'In-Person';
-        const doctor = doctors.find(d => d.id === doctorId);
+        const doctor = doctors.find(d => d.id === doctorId || d._id === doctorId);
 
-        if (!doctor || !date) {
+        if (!doctorId || !date) {
             showNotification('Please select a doctor and date', 'error');
             return;
         }
 
-        const newAppointment = {
-            id: appointments.length + 1,
-            doctorId: doctor.id,
-            doctorName: doctor.name,
-            specialization: doctor.specialization,
-            date: date,
-            time: '09:00 AM',
-            status: 'pending',
-            type: type
-        };
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/appointments/book', {
+                doctorId,
+                date,
+                time,
+                type,
+                reason: symptoms
+            });
 
-        setAppointments([newAppointment, ...appointments]);
-        setShowBookingModal(false);
-        setSymptoms('');
-        showNotification('Appointment request sent successfully!');
-        setActiveTab('appointments');
+            if (data.success) {
+                // Add new appointment to state
+                const newAppointment = {
+                    id: data.appointment._id,
+                    _id: data.appointment._id,
+                    doctorId: data.appointment.doctorId,
+                    doctorName: data.appointment.doctorName,
+                    specialization: data.appointment.specialization,
+                    date: new Date(data.appointment.date).toISOString().split('T')[0],
+                    time: data.appointment.time,
+                    status: data.appointment.status,
+                    type: data.appointment.type
+                };
+                setAppointments([newAppointment, ...appointments]);
+                setShowBookingModal(false);
+                setSymptoms('');
+                setSelectedDoctor(null);
+                toast.success('Appointment booked successfully!');
+                setActiveTab('appointments');
+            } else {
+                showNotification(data.message || 'Failed to book appointment', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification('Failed to book appointment', 'error');
+        }
     };
 
     const renderDashboard = () => (
@@ -181,7 +241,7 @@ const PatientDashboard = () => {
             <div className="animate-fadeInUp" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>
-                        Hello, John! 👋
+                        Hello, {userData?.name?.split(' ')[0] || 'there'}! 👋
                     </h1>
                     {healthTip ? (
                         <div style={{ background: 'rgba(16, 185, 129, 0.1)', borderLeft: '4px solid #10b981', padding: '1rem', borderRadius: '8px', marginTop: '0.5rem', maxWidth: '600px', backdropFilter: 'blur(10px)' }}>

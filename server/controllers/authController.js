@@ -5,7 +5,7 @@ import transporter from "../config/nodeMailer.js";
 import { json } from "express";
 
 export const register = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone, role, specialization, licenseNumber } = req.body;
     if (!name || !email || !password) {
         return res.json({ success: false, message: "Missing Details" })
     }
@@ -15,7 +15,23 @@ export const register = async (req, res) => {
             return res.json({ success: false, message: "User already exists" });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new userModel({ name, email, password: hashedPassword });
+
+        const userData = {
+            name,
+            email,
+            password: hashedPassword,
+            phone: phone || '',
+            role: role || 'patient'
+        };
+
+        // Add doctor-specific fields
+        if (role === 'doctor') {
+            userData.specialization = specialization || '';
+            userData.licenseNumber = licenseNumber || '';
+            userData.isVerifiedDoctor = false; // Doctors need admin verification
+        }
+
+        const user = new userModel(userData);
         await user.save();
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'default_secret_key_123', { expiresIn: '7d' })
 
@@ -29,8 +45,8 @@ export const register = async (req, res) => {
         const mailOptions = {
             from: process.env.SENDER_EMAIL,
             to: email,
-            subject: "Welcome to Shas's site",
-            text: `Welcome to my website, your account has been created with email id : ${email}`
+            subject: "Welcome to HealthCare Portal",
+            text: `Welcome to HealthCare Portal! Your account has been created with email: ${email}. ${role === 'doctor' ? 'Your doctor account is pending verification.' : ''}`
         }
 
         try {
@@ -39,7 +55,7 @@ export const register = async (req, res) => {
             console.log("Email sending failed (Mock Mode active). Welcome email skipped.");
         }
 
-        return res.json({ success: true })
+        return res.json({ success: true, role: user.role })
     } catch (error) {
         res.json({ success: false, message: error.message })
     }
@@ -68,7 +84,7 @@ export const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        return res.json({ success: true, token });
+        return res.json({ success: true, token, role: user.role });
 
     } catch (error) {
         return res.json({ success: false, message: error.message });
