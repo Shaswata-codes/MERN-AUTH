@@ -146,4 +146,50 @@ const generateHealthTips = async (req, res) => {
     }
 };
 
-export { classifySymptoms, analyzeReport, generateHealthTips };
+const generatePatientBrief = async (req, res) => {
+    try {
+        const { patientName, reason } = req.body;
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.json({
+                success: true,
+                data: {
+                    summary: `(Mock) ${patientName} is a 45-year-old managed for hypertension. Last visit was 3 months ago.`,
+                    history: ['Diagnosed with Hypertension in 2022', 'Family history of diabetes', 'Allergic to Penicillin'],
+                    questions: ['Have you been taking your Lisinopril regularly?', 'Any recent dizziness or headaches?']
+                }
+            });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+        You are a medical assistant preparing a doctor for an upcoming appointment.
+        Patient: ${patientName}
+        Reason for Visit: ${reason}
+
+        Generate a concise "Patient Brief" assuming a realistic medical history relevant to the reason.
+        
+        Return ONLY a JSON object:
+        {
+            "summary": "2 sentence persistent history overview",
+            "history": ["Key Point 1", "Key Point 2", "Key Point 3"],
+            "questions": ["Suggested Question 1", "Suggested Question 2"]
+        }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(text);
+
+        res.json({ success: true, data });
+
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export { classifySymptoms, analyzeReport, generateHealthTips, generatePatientBrief };
