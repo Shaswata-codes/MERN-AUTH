@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const Register = () => {
     const navigate = useNavigate();
+    const { setIsLoggedin, getUserData, backendUrl } = useContext(AppContext);
+
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -20,15 +25,36 @@ const Register = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error("Passwords do not match!");
+            return;
+        }
+
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/register', {
+                name: formData.fullName,
+                email: formData.email,
+                password: formData.password
+            });
+
+            if (data.success) {
+                setIsLoggedin(true);
+                getUserData();
+                toast.success("Account created successfully!");
+                navigate(`/${formData.role}-dashboard`);
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
             setIsLoading(false);
-            console.log('Registration data:', formData);
-            navigate(`/${formData.role}-dashboard`);
-        }, 1500);
+        }
     };
 
     return (

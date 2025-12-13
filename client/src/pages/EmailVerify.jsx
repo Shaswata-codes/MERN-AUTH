@@ -1,8 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const EmailVerify = () => {
   const navigate = useNavigate();
+  const { backendUrl, isLoggedin, userData, getUserData } = useContext(AppContext);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
@@ -11,12 +15,16 @@ const EmailVerify = () => {
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    // Focus on first input on mount
     inputRefs.current[0]?.focus();
   }, []);
 
   useEffect(() => {
-    // Countdown timer for resend
+    if (isLoggedin && userData && userData.isAccountVerified) {
+      navigate('/');
+    }
+  }, [isLoggedin, userData, navigate]);
+
+  useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
       return () => clearTimeout(timer);
@@ -25,20 +33,16 @@ const EmailVerify = () => {
 
   const handleChange = (index, value) => {
     if (value.length > 1) return; // Only allow single character
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setError('');
-
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index, e) => {
-    // Handle backspace
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -48,15 +52,12 @@ const EmailVerify = () => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     const newOtp = [...otp];
-
     for (let i = 0; i < pastedData.length; i++) {
       if (/^\d$/.test(pastedData[i])) {
         newOtp[i] = pastedData[i];
       }
     }
     setOtp(newOtp);
-
-    // Focus on the next empty input or last input
     const nextEmpty = newOtp.findIndex(digit => !digit);
     if (nextEmpty !== -1) {
       inputRefs.current[nextEmpty]?.focus();
@@ -75,21 +76,42 @@ const EmailVerify = () => {
     }
 
     setIsLoading(true);
+    try {
+      axios.defaults.withCredentials = true;
+      const { data } = await axios.post(backendUrl + '/api/auth/verifyAccount', { otp: otpCode });
 
-    // Simulate API call
-    setTimeout(() => {
+      if (data.success) {
+        setIsVerified(true);
+        getUserData();
+        toast.success(data.message);
+      } else {
+        setError(data.message);
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
       setIsLoading(false);
-      setIsVerified(true);
-    }, 1500);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (resendCooldown > 0) return;
 
-    // Simulate resend
-    setResendCooldown(60);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    try {
+      axios.defaults.withCredentials = true;
+      const { data } = await axios.post(backendUrl + '/api/auth/sendVerifyOtp');
+      if (data.success) {
+        toast.success(data.message);
+        setResendCooldown(60);
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   if (isVerified) {
@@ -109,7 +131,6 @@ const EmailVerify = () => {
             textAlign: 'center',
             borderRadius: '24px'
           }}>
-            {/* Success Animation */}
             <div style={{
               width: '120px',
               height: '120px',
@@ -126,7 +147,6 @@ const EmailVerify = () => {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-
             <h1 style={{
               fontSize: '2rem',
               fontWeight: 800,
@@ -167,7 +187,6 @@ const EmailVerify = () => {
           borderRadius: '24px'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            {/* Email Icon */}
             <div style={{
               width: '80px',
               height: '80px',
@@ -181,7 +200,6 @@ const EmailVerify = () => {
             }}>
               <span style={{ fontSize: '2.5rem' }}>✉️</span>
             </div>
-
             <h1 style={{
               fontSize: '2rem',
               fontWeight: 800,
@@ -196,7 +214,6 @@ const EmailVerify = () => {
           </div>
 
           <form onSubmit={handleSubmit}>
-            {/* OTP Input Fields */}
             <div style={{
               display: 'flex',
               justifyContent: 'center',
@@ -283,7 +300,6 @@ const EmailVerify = () => {
             </button>
           </form>
 
-          {/* Resend Section */}
           <div style={{ textAlign: 'center', marginTop: '2rem' }}>
             <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem' }}>
               Didn't receive the code?
@@ -305,7 +321,6 @@ const EmailVerify = () => {
             </button>
           </div>
 
-          {/* Back Link */}
           <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
             <span
               onClick={() => navigate('/login')}

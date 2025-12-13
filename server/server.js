@@ -14,7 +14,8 @@ connectDB();
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ credentials: true }))
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 
 

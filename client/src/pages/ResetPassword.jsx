@@ -1,8 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useContext } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { backendUrl } = useContext(AppContext);
+  const email = location.state?.email;
+
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
@@ -32,8 +39,7 @@ const ResetPassword = () => {
       setError('Please enter the complete OTP');
       return;
     }
-    setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); setStep(2); }, 1000);
+    setStep(2); // Move to password step (OTP verification happens on submit)
   };
 
   const handlePasswordChange = (e) => {
@@ -41,7 +47,7 @@ const ResetPassword = () => {
     setError('');
   };
 
-  const handleResetPassword = (e) => {
+  const handleResetPassword = async (e) => {
     e.preventDefault();
     if (passwords.newPassword.length < 8) {
       setError('Password must be at least 8 characters');
@@ -51,8 +57,28 @@ const ResetPassword = () => {
       setError('Passwords do not match');
       return;
     }
+
     setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); setStep(3); }, 1500);
+    try {
+      axios.defaults.withCredentials = true;
+      const { data } = await axios.post(backendUrl + '/api/auth/resetPassword', {
+        email,
+        otp: otp.join(''),
+        newPassword: passwords.newPassword
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        setStep(3);
+      } else {
+        toast.error(data.message);
+        setError(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getPasswordStrength = () => {
@@ -71,6 +97,21 @@ const ResetPassword = () => {
     ];
     return levels[s - 1] || { strength: 0, label: '', color: '' };
   };
+
+  if (!email) {
+    // Create a fallback if accessed directly
+    return (
+      <div className="landing-hero">
+        <div className="bg-orb"></div>
+        <div className="container-custom" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-effect" style={{ padding: '2rem', borderRadius: '24px', textAlign: 'center' }}>
+            <p style={{ color: 'white', marginBottom: '1rem' }}>No email provided. Please start from Forgot Password.</p>
+            <button className="btn-primary" onClick={() => navigate('/forgot-password')}>Go to Forgot Password</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (step === 3) {
     return (
@@ -132,6 +173,7 @@ const ResetPassword = () => {
     );
   }
 
+  // Step 1: Input OTP
   return (
     <div className="landing-hero">
       <div className="bg-orb"></div>
@@ -140,7 +182,7 @@ const ResetPassword = () => {
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-500), var(--purple-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '2.5rem', boxShadow: '0 0 30px rgba(59, 130, 246, 0.4)' }}>🔑</div>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Verify Reset Code</h1>
-            <p style={{ color: 'rgba(255,255,255,0.7)' }}>Enter the 6-digit code sent to your email</p>
+            <p style={{ color: 'rgba(255,255,255,0.7)' }}>Enter the 6-digit code sent to {email}</p>
           </div>
           <form onSubmit={handleVerifyOtp}>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
@@ -149,7 +191,7 @@ const ResetPassword = () => {
               ))}
             </div>
             {error && <p style={{ color: '#fb7185', textAlign: 'center', marginBottom: '1rem', background: 'rgba(251, 113, 133, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>{error}</p>}
-            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isLoading}>{isLoading ? 'Verifying...' : 'Verify Code'}</button>
+            <button type="submit" className="btn-primary" style={{ width: '100%' }}>Continue</button>
           </form>
           <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
             <span onClick={() => navigate('/forgot-password')} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem' }} onMouseOver={e => e.target.style.color = 'white'} onMouseOut={e => e.target.style.color = 'rgba(255,255,255,0.6)'}>← Back to Forgot Password</span>
