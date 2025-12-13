@@ -26,7 +26,7 @@ const DoctorDashboard = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [loading, setLoading] = useState(true);
 
-    // AI Brief State
+
     const [briefModalOpen, setBriefModalOpen] = useState(false);
     const [briefData, setBriefData] = useState(null);
     const [briefLoadingPt, setBriefLoadingPt] = useState(null);
@@ -48,13 +48,13 @@ const DoctorDashboard = () => {
         { label: 'Average Rating', value: '0', icon: '⭐', color: 'var(--purple-500)', trend: 'Loading...' }
     ]);
 
-    // Fetch data on mount
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 axios.defaults.withCredentials = true;
 
-                // Fetch today's appointments
+
                 const aptsRes = await axios.get(backendUrl + '/api/appointments/doctor/today');
                 if (aptsRes.data.success) {
                     setTodaysAppointments(aptsRes.data.appointments.map(a => ({
@@ -67,19 +67,19 @@ const DoctorDashboard = () => {
                     })));
                 }
 
-                // Fetch all appointments
+
                 const allAptsRes = await axios.get(backendUrl + '/api/doctors/my/appointments');
                 if (allAptsRes.data.success) {
                     setAllAppointments(allAptsRes.data.appointments);
                 }
 
-                // Fetch patients
+
                 const patientsRes = await axios.get(backendUrl + '/api/doctors/my/patients');
                 if (patientsRes.data.success) {
                     setPatients(patientsRes.data.patients);
                 }
 
-                // Fetch doctor stats
+
                 const statsRes = await axios.get(backendUrl + '/api/doctors/my/stats');
                 if (statsRes.data.success) {
                     const s = statsRes.data.stats;
@@ -120,6 +120,36 @@ const DoctorDashboard = () => {
         }
     };
 
+    const handleUpdateStatus = async (appointmentId, status) => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.put(backendUrl + '/api/appointments/status/' + appointmentId, { status });
+            if (data.success) {
+                toast.success(`Appointment ${status}`);
+                // Refresh data
+                const aptsRes = await axios.get(backendUrl + '/api/appointments/doctor/today');
+                if (aptsRes.data.success) {
+                    setTodaysAppointments(aptsRes.data.appointments.map(a => ({
+                        id: a._id,
+                        patient: a.patientName,
+                        time: a.time,
+                        reason: a.reason || 'Checkup',
+                        status: a.status,
+                        type: a.type
+                    })));
+                }
+                const allAptsRes = await axios.get(backendUrl + '/api/doctors/my/appointments');
+                if (allAptsRes.data.success) {
+                    setAllAppointments(allAptsRes.data.appointments);
+                }
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
+
     return (
         <div className="dashboard-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#0f172a' }}>
 
@@ -143,8 +173,8 @@ const DoctorDashboard = () => {
                                 DS
                             </div>
                             <div className="hide-mobile" style={{ lineHeight: 1.2 }}>
-                                <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>Dr. Sarah</div>
-                                <div style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>Cardiologist</div>
+                                <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>{userData?.name || 'Doctor'}</div>
+                                <div style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>{userData?.specialization || 'Specialist'}</div>
                             </div>
                         </div>
                     </div>
@@ -228,7 +258,12 @@ const DoctorDashboard = () => {
                                                         <div style={{ fontWeight: 600, color: 'white' }}>{apt.time}</div>
                                                         <div><span className={`badge ${apt.type === 'Video' ? 'badge-purple' : 'badge-info'}`}>{apt.type}</span></div>
                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                            <button className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>View</button>
+                                                            {apt.status === 'pending' && (
+                                                                <>
+                                                                    <button className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#10b981' }} onClick={() => handleUpdateStatus(apt.id, 'confirmed')}>Approve</button>
+                                                                    <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#ef4444' }} onClick={() => handleUpdateStatus(apt.id, 'cancelled')}>Reject</button>
+                                                                </>
+                                                            )}
                                                             <button
                                                                 className="btn-secondary"
                                                                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'linear-gradient(135deg, #ec4899, #d946ef)', border: 'none' }}
@@ -258,6 +293,7 @@ const DoctorDashboard = () => {
                                         <div>Time</div>
                                         <div>Type</div>
                                         <div>Status</div>
+                                        <div>Actions</div>
                                     </div>
                                     {allAppointments.length === 0 ? (
                                         <div style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>No appointments found.</div>
@@ -280,6 +316,14 @@ const DoctorDashboard = () => {
                                                     }}>
                                                         {apt.status}
                                                     </span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    {apt.status === 'pending' && (
+                                                        <>
+                                                            <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', background: '#10b981' }} onClick={() => handleUpdateStatus(apt._id, 'confirmed')}>✓</button>
+                                                            <button className="btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', background: '#ef4444' }} onClick={() => handleUpdateStatus(apt._id, 'cancelled')}>✕</button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))
@@ -402,7 +446,7 @@ const DoctorDashboard = () => {
                 </main>
             </div>
 
-            {/* AI Brief Modal */}
+            {/* Brief Modal */}
             {briefModalOpen && briefData && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBriefModalOpen(false)}>
                     <div style={{ width: '90%', maxWidth: '600px', background: '#1e293b', borderRadius: '24px', padding: '2rem', border: '1px solid rgba(236, 72, 153, 0.3)', boxShadow: '0 0 50px rgba(236, 72, 153, 0.2)' }} onClick={e => e.stopPropagation()}>
@@ -410,7 +454,7 @@ const DoctorDashboard = () => {
                             <div style={{ fontSize: '2rem' }}>✨</div>
                             <div>
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>Patient Brief</h2>
-                                <p style={{ color: 'rgba(255,255,255,0.6)' }}>AI Summary for {briefData.patientName}</p>
+                                <p style={{ color: 'rgba(255,255,255,0.6)' }}>Summary for {briefData.patientName}</p>
                             </div>
                         </div>
 

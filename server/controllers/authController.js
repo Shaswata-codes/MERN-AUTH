@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
+import medicalRecordModel from "../models/medicalRecordModel.js";
 import transporter from "../config/nodeMailer.js";
 import { json } from "express";
 
@@ -31,8 +32,36 @@ export const register = async (req, res) => {
             userData.isVerifiedDoctor = false; // Doctors need admin verification
         }
 
+        // Add default health stats for patients
+        if (role === 'patient' || !role) {
+            userData.healthStats = {
+                heartRate: '75 bpm',
+                bloodPressure: '120/80',
+                weight: '70 kg',
+                sleep: '7h'
+            };
+        }
+
         const user = new userModel(userData);
         await user.save();
+
+        // Generate fake reports for new patient
+        if (user.role === 'patient') {
+            const reportTypes = ['Lab Report', 'Radiology', 'Prescription', 'Certificate', 'Other'];
+            for (const type of reportTypes) {
+                const record = new medicalRecordModel({
+                    patientId: user._id,
+                    title: `Fake ${type} for ${user.name}`,
+                    type: type,
+                    doctorName: 'Dr. AI',
+                    description: `This is a generated fake ${type} report.`,
+                    findings: 'Normal',
+                    recommendation: 'Stay healthy'
+                });
+                await record.save();
+            }
+        }
+
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'default_secret_key_123', { expiresIn: '7d' })
 
         res.cookie('token', token, {

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
 
 const SettingsPage = () => {
     const navigate = useNavigate();
+    const { userData } = useContext(AppContext);
     const [activeTab, setActiveTab] = useState('account');
     const [settings, setSettings] = useState({
         emailNotifications: true,
@@ -91,11 +93,11 @@ const SettingsPage = () => {
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>Account Settings</h2>
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Email Address</label>
-                                    <input type="email" className="input-field" defaultValue="john.doe@example.com" />
+                                    <input type="email" className="input-field" defaultValue={userData?.email || ""} readOnly />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Username</label>
-                                    <input type="text" className="input-field" defaultValue="johndoe" />
+                                    <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Name</label>
+                                    <input type="text" className="input-field" defaultValue={userData?.name || ""} />
                                 </div>
                                 <button className="btn-primary">Save Changes</button>
                                 <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)' }} />

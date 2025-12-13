@@ -6,7 +6,8 @@ import {
     getRecordsByPatientId,
     updateMedicalRecord,
     deleteMedicalRecord,
-    getAllRecords
+    getAllRecords,
+    seedFakeReports
 } from "../controllers/medicalRecordController.js";
 
 const recordRouter = express.Router();
@@ -22,5 +23,8 @@ recordRouter.delete('/delete/:recordId', userAuth, deleteMedicalRecord);
 
 // Admin routes
 recordRouter.get('/all', userAuth, getAllRecords);
+
+// Seed route
+recordRouter.get('/seed', seedFakeReports);
 
 export default recordRouter;

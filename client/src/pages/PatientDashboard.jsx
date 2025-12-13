@@ -29,24 +29,24 @@ const PatientDashboard = () => {
     const [notification, setNotification] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // AI Symptom State
+
     const [symptoms, setSymptoms] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    // AI Report State
+
     const [analyzingRecordId, setAnalyzingRecordId] = useState(null);
     const [reportAnalysis, setReportAnalysis] = useState(null);
     const [showReportModal, setShowReportModal] = useState(false);
 
-    // AI Health Tip State
+
     const [healthTip, setHealthTip] = useState('');
 
-    // Data from Backend
+
     const [doctors, setDoctors] = useState([]);
     const [appointments, setAppointments] = useState([]);
     const [records, setRecords] = useState([]);
 
-    // Health Stats (can be updated from user profile)
+
     const healthStats = userData?.healthStats ? [
         { label: 'Heart Rate', value: userData.healthStats.heartRate || '-- bpm', icon: '❤️', color: 'var(--coral-500)', trend: 'Normal' },
         { label: 'Blood Pressure', value: userData.healthStats.bloodPressure || '--/--', icon: '🩺', color: 'var(--primary-500)', trend: 'Normal' },
@@ -59,13 +59,13 @@ const PatientDashboard = () => {
         { label: 'Sleep', value: '7h 30m', icon: '🌙', color: 'var(--purple-500)', trend: '+30m' }
     ];
 
-    // Fetch data on mount
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 axios.defaults.withCredentials = true;
 
-                // Fetch doctors
+
                 const doctorsRes = await axios.get(backendUrl + '/api/doctors/list');
                 if (doctorsRes.data.success) {
                     setDoctors(doctorsRes.data.doctors.map(d => ({
@@ -81,7 +81,7 @@ const PatientDashboard = () => {
                     })));
                 }
 
-                // Fetch appointments
+
                 const aptsRes = await axios.get(backendUrl + '/api/appointments/patient');
                 if (aptsRes.data.success) {
                     setAppointments(aptsRes.data.appointments.map(a => ({
@@ -97,7 +97,7 @@ const PatientDashboard = () => {
                     })));
                 }
 
-                // Fetch medical records
+
                 const recordsRes = await axios.get(backendUrl + '/api/records/my');
                 if (recordsRes.data.success) {
                     setRecords(recordsRes.data.records.map(r => ({
@@ -111,7 +111,7 @@ const PatientDashboard = () => {
                     })));
                 }
 
-                // Fetch health tip
+
                 const stats = { heartRate: '72 bpm', bp: '120/80', weight: '70 kg', sleep: '7h 30m' };
                 const tipRes = await axios.post(backendUrl + '/api/gemini/health-tips', { stats });
                 if (tipRes.data.success) {
@@ -134,7 +134,7 @@ const PatientDashboard = () => {
         setTimeout(() => setNotification(null), 3000);
     };
 
-    // AI Symptom Analysis
+
     const handleAnalyzeSymptoms = async () => {
         if (!symptoms.trim()) return;
 
@@ -147,7 +147,7 @@ const PatientDashboard = () => {
 
                 if (recommendedDoctor) {
                     setSelectedDoctor(recommendedDoctor.id);
-                    showNotification(`AI Recommendation: ${specialization} (${urgency})`, 'success');
+                    showNotification(`Recommendation: ${specialization} (${urgency})`, 'success');
                 } else {
                     showNotification(`Suggested Specialist: ${specialization}`, 'info');
                 }
@@ -156,13 +156,13 @@ const PatientDashboard = () => {
             }
         } catch (error) {
             console.error(error);
-            showNotification('AI Service Unavailable.', 'error');
+            showNotification('Service Unavailable.', 'error');
         } finally {
             setIsAnalyzing(false);
         }
     };
 
-    // AI Report Analysis
+
     const handleAnalyzeReport = async (record) => {
         setAnalyzingRecordId(record.id);
         try {
@@ -292,7 +292,10 @@ const PatientDashboard = () => {
                                 {apt.doctorName === 'Dr. Michael Chen' ? '👨‍⚕️' : '👩‍⚕️'}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <h4 style={{ color: 'white', marginBottom: '0.25rem', fontWeight: 600 }}>{apt.doctorName}</h4>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h4 style={{ color: 'white', marginBottom: '0.25rem', fontWeight: 600 }}>{apt.doctorName}</h4>
+                                    <span style={{ fontSize: '0.8rem', color: '#60a5fa', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>{apt.date} • {apt.time}</span>
+                                </div>
                                 <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9rem' }}>{apt.specialization}</p>
                             </div>
                         </div>
@@ -409,7 +412,7 @@ const PatientDashboard = () => {
                                             disabled={analyzingRecordId === record.id}
                                             style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
                                         >
-                                            {analyzingRecordId === record.id ? '⌛' : '✨ Use AI'}
+                                            {analyzingRecordId === record.id ? '⌛' : '✨ Analyze'}
                                         </button>
                                         <button className="btn-icon">⬇️</button>
                                     </div>
@@ -471,7 +474,7 @@ const PatientDashboard = () => {
                     <div style={{ width: '90%', maxWidth: '500px', background: '#1e293b', borderRadius: '24px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
                         <h2 style={{ fontSize: '1.5rem', color: 'white', marginBottom: '1rem' }}>Book Appointment</h2>
                         <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
-                            <h3 style={{ color: '#60a5fa', fontSize: '1rem', marginBottom: '0.5rem' }}>✨ AI Specialist Matcher</h3>
+                            <h3 style={{ color: '#60a5fa', fontSize: '1rem', marginBottom: '0.5rem' }}>✨ Specialist Matcher</h3>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <input type="text" placeholder="Describe symptoms..." value={symptoms} onChange={e => setSymptoms(e.target.value)} className="input-field" style={{ flex: 1, background: 'rgba(0,0,0,0.2)' }} />
                                 <button className="btn-primary" onClick={handleAnalyzeSymptoms} disabled={isAnalyzing || !symptoms}>{isAnalyzing ? '...' : 'Analyze'}</button>
@@ -489,14 +492,14 @@ const PatientDashboard = () => {
                 </div>
             )}
 
-            {/* AI Report Modal */}
+            {/* Report Modal */}
             {showReportModal && reportAnalysis && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowReportModal(false)}>
                     <div style={{ width: '90%', maxWidth: '600px', background: '#1e293b', borderRadius: '24px', padding: '2rem', border: '1px solid rgba(139, 92, 246, 0.3)', boxShadow: '0 0 50px rgba(139, 92, 246, 0.2)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div style={{ fontSize: '2rem' }}>✨</div>
                             <div>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>AI Analysis Result</h2>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>Analysis Result</h2>
                                 <p style={{ color: 'rgba(255,255,255,0.6)' }}>Simplified summary of your medical record</p>
                             </div>
                         </div>

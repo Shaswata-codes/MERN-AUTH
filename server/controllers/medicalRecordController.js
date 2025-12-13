@@ -109,3 +109,34 @@ export const getAllRecords = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 };
+
+// Seed fake reports for all patients
+export const seedFakeReports = async (req, res) => {
+    try {
+        const patients = await userModel.find({ role: 'patient' });
+        const reportTypes = ['Lab Report', 'Radiology', 'Prescription', 'Certificate', 'Other'];
+        let createdCount = 0;
+
+        for (const patient of patients) {
+            for (const type of reportTypes) {
+                const existing = await medicalRecordModel.findOne({ patientId: patient._id, type });
+                if (!existing) {
+                    const record = new medicalRecordModel({
+                        patientId: patient._id,
+                        title: `Fake ${type} for ${patient.name}`,
+                        type: type,
+                        doctorName: 'Dr. AI',
+                        description: `This is a generated fake ${type} report.`,
+                        findings: 'Normal',
+                        recommendation: 'Stay healthy'
+                    });
+                    await record.save();
+                    createdCount++;
+                }
+            }
+        }
+        res.json({ success: true, message: `Created ${createdCount} fake reports.` });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+};

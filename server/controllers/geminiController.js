@@ -51,7 +51,7 @@ const classifySymptoms = async (req, res) => {
         const response = await result.response;
         let text = response.text();
 
-        // Clean up any markdown code blocks if Gemini adds them
+
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         const data = JSON.parse(text);
@@ -206,15 +206,13 @@ const chatWithAI = async (req, res) => {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-        // Transform frontend history to Gemini format if needed
-        // Frontend sends: [{ role: 'user', text: '...' }, { role: 'model', text: '...' }]
-        // Gemini expects: [{ role: 'user', parts: [{ text: '...' }] }, ...]
+
         let formattedHistory = (history || []).map(msg => ({
             role: msg.role === 'bot' ? 'model' : 'user',
             parts: [{ text: msg.text }]
         }));
 
-        // Gemini requires history to start with 'user'. Remove leading 'model' messages.
+
         while (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
             formattedHistory.shift();
         }
