@@ -4,8 +4,11 @@ const connectDB = async () => {
 
     mongoose.connection.on('connected', () => console.log('MongoDB connected successfully'));
 
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-    await mongoose.connect(`${uri}/mernAuth`);
+    if (process.env.MONGODB_URI) {
+        await mongoose.connect(process.env.MONGODB_URI);
+    } else {
+        await mongoose.connect('mongodb://localhost:27017/mernAuth');
+    }
 }
 
 export default connectDB;

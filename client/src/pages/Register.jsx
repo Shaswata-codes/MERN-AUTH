@@ -39,14 +39,20 @@ const Register = () => {
             const { data } = await axios.post(backendUrl + '/api/auth/register', {
                 name: formData.fullName,
                 email: formData.email,
-                password: formData.password
+                password: formData.password,
+                phone: formData.phone,
+                role: formData.role,
+                specialization: formData.specialization,
+                licenseNumber: formData.licenseNumber
             });
 
             if (data.success) {
                 setIsLoggedin(true);
                 getUserData();
                 toast.success("Account created successfully!");
-                navigate(`/${formData.role}-dashboard`);
+                // Use role from response if available, fallback to form role
+                const userRole = data.role || formData.role;
+                navigate(`/${userRole}-dashboard`);
             } else {
                 toast.error(data.message);
             }
