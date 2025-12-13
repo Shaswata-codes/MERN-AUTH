@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const PatientDashboard = () => {
     const navigate = useNavigate();
@@ -8,6 +9,10 @@ const PatientDashboard = () => {
     const [selectedDoctor, setSelectedDoctor] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [notification, setNotification] = useState(null);
+
+    // AI State
+    const [symptoms, setSymptoms] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     // Mock Data - Doctors
     const [doctors] = useState([
@@ -47,6 +52,38 @@ const PatientDashboard = () => {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    // AI Analysis Handler
+    const handleAnalyzeSymptoms = async () => {
+        if (!symptoms.trim()) return;
+
+        setIsAnalyzing(true);
+        try {
+            // Call Backend API
+            const response = await axios.post('http://localhost:4000/api/gemini/classify', { symptoms });
+
+            if (response.data.success) {
+                const { specialization, urgency, reason } = response.data.data;
+
+                // Find matching doctor
+                const recommendedDoctor = doctors.find(d => d.specialization === specialization) || doctors.find(d => d.specialization === 'General Medicine');
+
+                if (recommendedDoctor) {
+                    setSelectedDoctor(recommendedDoctor.id);
+                    showNotification(`AI Recommendation: ${specialization} (${urgency} Urgency)`, 'success');
+                } else {
+                    showNotification(`Suggested Specialist: ${specialization}`, 'info');
+                }
+            } else {
+                showNotification('Could not analyze symptoms.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification('AI Service Unavailable. Please select manually.', 'error');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     // Form Handling
     const handleBookAppointment = (e) => {
         e.preventDefault();
@@ -76,6 +113,7 @@ const PatientDashboard = () => {
 
         setAppointments([newAppointment, ...appointments]);
         setShowBookingModal(false);
+        setSymptoms(''); // Reset symptoms
         showNotification('Appointment request sent successfully!');
         setActiveTab('appointments');
     };
@@ -334,7 +372,7 @@ const PatientDashboard = () => {
                     top: '20px',
                     right: '20px',
                     padding: '1rem 1.5rem',
-                    background: notification.type === 'success' ? '#10b981' : '#ef4444',
+                    background: notification.type === 'success' ? '#10b981' : notification.type === 'info' ? 'var(--primary-500)' : '#ef4444',
                     color: 'white',
                     borderRadius: '12px',
                     boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
@@ -345,7 +383,7 @@ const PatientDashboard = () => {
                     gap: '0.75rem',
                     fontWeight: 600
                 }}>
-                    <span>{notification.type === 'success' ? '✅' : '⚠️'}</span>
+                    <span>{notification.type === 'success' ? '✅' : notification.type === 'info' ? 'ℹ️' : '⚠️'}</span>
                     {notification.message}
                 </div>
             )}
@@ -434,10 +472,49 @@ const PatientDashboard = () => {
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setShowBookingModal(false)}>
                     <div style={{ width: '90%', maxWidth: '500px', background: '#1e293b', borderRadius: '24px', padding: '2rem', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', animation: 'scaleIn 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white', marginBottom: '1.5rem' }}>Book Appointment</h2>
+
+                        {/* AI Symptom Check */}
+                        <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#60a5fa', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                ✨ AI Specialist Matcher
+                            </h3>
+                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
+                                Not sure who to see? Describe your symptoms and let AI help.
+                            </p>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. I have a severe headache and nausea..."
+                                    value={symptoms}
+                                    onChange={(e) => setSymptoms(e.target.value)}
+                                    className="input-field"
+                                    style={{ flex: 1, fontSize: '0.9rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={handleAnalyzeSymptoms}
+                                    disabled={isAnalyzing || !symptoms}
+                                    style={{ fontSize: '0.9rem', padding: '0.5rem 1rem', background: isAnalyzing ? 'var(--neutral-600)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', minWidth: '100px', display: 'flex', justifyContent: 'center' }}
+                                >
+                                    {isAnalyzing ? (
+                                        <span style={{ animation: 'spin 1s linear infinite' }}>⌛</span>
+                                    ) : 'Analyze'}
+                                </button>
+                            </div>
+                        </div>
+
                         <form onSubmit={handleBookAppointment}>
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Select Specialist</label>
-                                <select name="doctorId" className="form-select" defaultValue={selectedDoctor || ''} required style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <select
+                                    name="doctorId"
+                                    className="form-select"
+                                    value={selectedDoctor || ''}
+                                    onChange={(e) => setSelectedDoctor(parseInt(e.target.value))}
+                                    required
+                                    style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                >
                                     <option value="" disabled>Choose a doctor...</option>
                                     {doctors.map(d => <option key={d.id} value={d.id}>{d.name} ({d.specialization})</option>)}
                                 </select>
@@ -455,7 +532,7 @@ const PatientDashboard = () => {
                             </div>
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Notes (Optional)</label>
-                                <textarea name="notes" className="input-field" rows="3" placeholder="Briefly describe your symptoms..." style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', resize: 'none' }}></textarea>
+                                <textarea name="notes" className="input-field" rows="3" placeholder="Additional notes..." style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', resize: 'none' }}></textarea>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                                 <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowBookingModal(false)}>Cancel</button>

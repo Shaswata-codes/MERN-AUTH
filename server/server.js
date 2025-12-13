@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/mongodb.js';
 import authRouter from './routes/authRouter.js';
 import userRouter from './routes/userRoutes.js';
+import geminiRouter from './routes/geminiRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -13,12 +14,13 @@ connectDB();
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({credentials : true}))
+app.use(cors({ credentials: true }))
 
 
 
-app.get('/', (req, res)=> res.send('API Working'));
+app.get('/', (req, res) => res.send('API Working'));
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
+app.use('/api/gemini', geminiRouter);
 
-app.listen(port, ()=> console.log(`Server started on PORT ${port}`))
+app.listen(port, () => console.log(`Server started on PORT ${port}`))
