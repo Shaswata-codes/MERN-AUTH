@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+import { AppContext } from '../context/AppContext';
 
 const DoctorDashboard = () => {
     const navigate = useNavigate();
+    const { setIsLoggedin, setUserData, backendUrl, userData } = useContext(AppContext);
+
+    const logout = async () => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/logout');
+            if (data.success) {
+                setIsLoggedin(false);
+                setUserData(false);
+                toast.success("Logged out successfully!");
+                navigate('/');
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
     const [activeTab, setActiveTab] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -86,7 +104,7 @@ const DoctorDashboard = () => {
                         </div>
                     ))}
                     <div style={{ marginTop: 'auto' }}>
-                        <div onClick={() => navigate('/login')} style={{ padding: '0.875rem 1rem', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--coral-400)', transition: 'all 0.3s ease' }}>
+                        <div onClick={logout} style={{ padding: '0.875rem 1rem', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--coral-400)', transition: 'all 0.3s ease' }}>
                             <span style={{ fontSize: '1.2rem' }}>🚪</span>
                             <span style={{ fontWeight: 500 }}>Logout</span>
                         </div>

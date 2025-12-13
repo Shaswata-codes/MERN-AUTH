@@ -1,9 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+import { AppContext } from '../context/AppContext';
 
 const PatientDashboard = () => {
     const navigate = useNavigate();
+    const { setIsLoggedin, setUserData, backendUrl, userData } = useContext(AppContext);
+
+    const logout = async () => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/logout');
+            if (data.success) {
+                setIsLoggedin(false);
+                setUserData(false);
+                toast.success("Logged out successfully!");
+                navigate('/');
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
     const [activeTab, setActiveTab] = useState('dashboard');
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -356,7 +374,16 @@ const PatientDashboard = () => {
                 <div className="navbar-brand" style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', cursor: 'pointer' }} onClick={() => navigate('/')}>
                     <span>🏥</span> HealthPortal
                 </div>
-                <div style={{ color: 'white' }}>John Doe</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ color: 'white' }}>{userData?.name || 'John Doe'}</span>
+                    <button
+                        onClick={logout}
+                        className="btn-outline"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        <span>🚪</span> Logout
+                    </button>
+                </div>
             </nav>
 
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
