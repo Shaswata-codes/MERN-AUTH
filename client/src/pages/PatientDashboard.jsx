@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -18,6 +18,9 @@ const PatientDashboard = () => {
     const [analyzingRecordId, setAnalyzingRecordId] = useState(null);
     const [reportAnalysis, setReportAnalysis] = useState(null);
     const [showReportModal, setShowReportModal] = useState(false);
+
+    // AI Health Tip State
+    const [healthTip, setHealthTip] = useState('');
 
     // Mock Data - Doctors
     const [doctors] = useState([
@@ -50,6 +53,24 @@ const PatientDashboard = () => {
         { label: 'Weight', value: '70 kg', icon: '⚖️', color: 'var(--accent-500)', trend: '-1kg' },
         { label: 'Sleep', value: '7h 30m', icon: '🌙', color: 'var(--purple-500)', trend: '+30m' }
     ];
+
+    // Fetch Health Tip on Mount
+    useEffect(() => {
+        const fetchTip = async () => {
+            try {
+                // Mocking stats sending
+                const stats = { heartRate: '72 bpm', bp: '120/80', weight: '70 kg', sleep: '7h 30m' };
+                const response = await axios.post('http://localhost:4000/api/gemini/health-tips', { stats });
+                if (response.data.success) {
+                    setHealthTip(response.data.data.tip);
+                }
+            } catch (error) {
+                console.error("Failed to fetch health tip", error);
+                setHealthTip("Stay hydrated and keep moving!");
+            }
+        };
+        fetchTip();
+    }, []);
 
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
@@ -139,19 +160,26 @@ const PatientDashboard = () => {
 
     const renderDashboard = () => (
         <div className="animate-fadeIn">
-            <div className="animate-fadeInUp" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="animate-fadeInUp" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>
                         Hello, John! 👋
                     </h1>
-                    <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '1.1rem' }}>
-                        Here's your health overview for today.
-                    </p>
+                    {healthTip ? (
+                        <div style={{ background: 'rgba(16, 185, 129, 0.1)', borderLeft: '4px solid #10b981', padding: '1rem', borderRadius: '8px', marginTop: '0.5rem', maxWidth: '600px', backdropFilter: 'blur(10px)' }}>
+                            <p style={{ color: '#6ee7b7', margin: 0, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                                <span style={{ fontSize: '1.2rem' }}>✨</span>
+                                <span>{healthTip}</span>
+                            </p>
+                        </div>
+                    ) : (
+                        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '1.1rem' }}>Analyzing your health stats...</p>
+                    )}
                 </div>
                 <button
                     className="btn-primary"
                     onClick={() => { setSelectedDoctor(null); setShowBookingModal(true); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.875rem 1.5rem' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.875rem 1.5rem', marginTop: '1rem' }}
                 >
                     <span>➕</span> Book Appointment
                 </button>

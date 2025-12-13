@@ -111,4 +111,39 @@ const analyzeReport = async (req, res) => {
     }
 };
 
-export { classifySymptoms, analyzeReport };
+const generateHealthTips = async (req, res) => {
+    try {
+        const { stats } = req.body; // e.g., { heartRate: '72 bpm', bp: '120/80', weight: '70 kg' }
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.json({
+                success: true,
+                data: {
+                    tip: "Your heart rate is consistent with a healthy athlete's. Keep up the cardio!"
+                }
+            });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+        You are a health coach. Analyze these patient vitals: ${JSON.stringify(stats)}.
+        Generate a single, motivating, personalized health tip (max 20 words) based on the data.
+        Return ONLY a JSON object: { "tip": "Your tip here" }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(text);
+
+        res.json({ success: true, data });
+
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export { classifySymptoms, analyzeReport, generateHealthTips };
