@@ -64,4 +64,51 @@ const classifySymptoms = async (req, res) => {
     }
 };
 
-export { classifySymptoms };
+const analyzeReport = async (req, res) => {
+    try {
+        const { recordType, doctor, date } = req.body;
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.json({
+                success: true,
+                data: {
+                    summary: `(Mock) Analysis of ${recordType}: Results are within normal range.`,
+                    findings: ['Hemoglobin: 14.5 g/dL (Normal)', 'WBC: 6.5 (Normal)', 'Platelets: 250k (Normal)'],
+                    recommendation: 'Maintain current diet and exercise routine.'
+                }
+            });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+        You are an AI medical assistant. Generate a realistic, patient-friendly summary for a medical record with the following details:
+        Type: ${recordType}
+        Doctor: ${doctor}
+        Date: ${date}
+
+        Assume typical results for a healthy adult with one minor, non-critical observation (e.g., slightly low Vitamin D or elevated cholesterol) to make it interesting.
+
+        Return ONLY a valid JSON object with:
+        {
+            "summary": "2 sentnece overview",
+            "findings": ["Point 1", "Point 2", "Point 3"],
+            "recommendation": "One actionable health tip"
+        }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(text);
+
+        res.json({ success: true, data });
+
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export { classifySymptoms, analyzeReport };

@@ -1,8 +1,9 @@
 import express from 'express';
-import { classifySymptoms } from '../controllers/geminiController.js';
+import { classifySymptoms, analyzeReport } from '../controllers/geminiController.js';
 
 const geminiRouter = express.Router();
 
 geminiRouter.post('/classify', classifySymptoms);
+geminiRouter.post('/analyze', analyzeReport);
 
 export default geminiRouter;
