@@ -29,7 +29,7 @@ const classifySymptoms = async (req, res) => {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         You are an AI medical assistant. Analyze the following patient symptoms and map them to the most appropriate medical specialist from this specific list: 
@@ -80,7 +80,7 @@ const analyzeReport = async (req, res) => {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         You are an AI medical assistant. Generate a realistic, patient-friendly summary for a medical record with the following details:
@@ -125,7 +125,7 @@ const generateHealthTips = async (req, res) => {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         You are a health coach. Analyze these patient vitals: ${JSON.stringify(stats)}.
@@ -162,7 +162,7 @@ const generatePatientBrief = async (req, res) => {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         You are a medical assistant preparing a doctor for an upcoming appointment.
@@ -192,4 +192,50 @@ const generatePatientBrief = async (req, res) => {
     }
 };
 
-export { classifySymptoms, analyzeReport, generateHealthTips, generatePatientBrief };
+const chatWithAI = async (req, res) => {
+    try {
+        const { message, history } = req.body;
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.json({
+                success: true,
+                reply: "I am a mock AI assistant. Please provide a valid API key to chat with the real Gemini AI."
+            });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+        // Transform frontend history to Gemini format if needed
+        // Frontend sends: [{ role: 'user', text: '...' }, { role: 'model', text: '...' }]
+        // Gemini expects: [{ role: 'user', parts: [{ text: '...' }] }, ...]
+        let formattedHistory = (history || []).map(msg => ({
+            role: msg.role === 'bot' ? 'model' : 'user',
+            parts: [{ text: msg.text }]
+        }));
+
+        // Gemini requires history to start with 'user'. Remove leading 'model' messages.
+        while (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
+            formattedHistory.shift();
+        }
+
+        const chat = model.startChat({
+            history: formattedHistory,
+            generationConfig: {
+                maxOutputTokens: 500,
+            },
+        });
+
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        const text = response.text();
+
+        res.json({ success: true, reply: text });
+
+    } catch (error) {
+        console.error("Gemini Chat Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export { classifySymptoms, analyzeReport, generateHealthTips, generatePatientBrief, chatWithAI };

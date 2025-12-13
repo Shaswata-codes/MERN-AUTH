@@ -18,11 +18,13 @@ import ContactPage from './pages/ContactPage'
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Chatbot from './components/Chatbot'
 
 const App = () => {
   return (
     <div>
       <ToastContainer />
+      <Chatbot />
       <Routes>
         <Route path='/' element={<LandingPage />} />
         <Route path='/login' element={<LoginPage />} />
