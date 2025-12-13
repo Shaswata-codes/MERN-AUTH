@@ -29,7 +29,10 @@ const LoginPage = () => {
             if (data.success) {
                 setIsLoggedin(true);
                 getUserData();
-                navigate(`/${formData.role}-dashboard`);
+                toast.success("Login successful!");
+                // Use role from response if available, otherwise use form selection
+                const userRole = data.role || formData.role;
+                navigate(`/${userRole}-dashboard`);
             } else {
                 toast.error(data.message);
             }
