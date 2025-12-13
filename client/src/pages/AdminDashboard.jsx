@@ -1,8 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { AppContext } from '../context/AppContext';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const { setIsLoggedin, setUserData, backendUrl, userData } = useContext(AppContext);
+
+    const logout = async () => {
+        try {
+            axios.defaults.withCredentials = true;
+            const { data } = await axios.post(backendUrl + '/api/auth/logout');
+            if (data.success) {
+                setIsLoggedin(false);
+                setUserData(false);
+                toast.success("Logged out successfully!");
+                navigate('/');
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
     const [activeTab, setActiveTab] = useState('dashboard');
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalType, setModalType] = useState('');
@@ -106,7 +125,7 @@ const AdminDashboard = () => {
 
                     <div style={{ marginTop: 'auto' }}>
                         <div
-                            onClick={() => navigate('/login')}
+                            onClick={logout}
                             style={{
                                 padding: '0.875rem 1rem',
                                 borderRadius: '12px',
